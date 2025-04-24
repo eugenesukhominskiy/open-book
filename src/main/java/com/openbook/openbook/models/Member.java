@@ -33,7 +33,7 @@ public class Member {
     @JsonBackReference
     private List<Book> books;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "library",
             joinColumns = @JoinColumn(name = "reader_id"),

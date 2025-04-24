@@ -1,6 +1,7 @@
 package com.openbook.openbook.models;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.openbook.openbook.enums.BookStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,6 +25,9 @@ public class Book {
     @Column(nullable = false)
     private Long characters;
     private Integer price;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BookStatus status;
 
     @ManyToOne
     @JoinColumn(name = "genre_id", nullable = false)

@@ -18,6 +18,7 @@ CREATE TABLE book (
                       description VARCHAR(255) NOT NULL,
                       characters BIGINT NOT NULL,
                       price INTEGER,
+                      status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
                       genre_id BIGINT NOT NULL,
                       author_id BIGINT NOT NULL,
                       FOREIGN KEY (genre_id) REFERENCES genre(id),
@@ -25,9 +26,9 @@ CREATE TABLE book (
 );
 
 CREATE TABLE library (
-                         reader_id BIGINT NOT NULL,
-                         book_id BIGINT NOT NULL,
-                         PRIMARY KEY (reader_id, book_id),
-                         FOREIGN KEY (reader_id) REFERENCES member(id),
-                         FOREIGN KEY (book_id) REFERENCES book(id)
+                     reader_id BIGINT NOT NULL,
+                     book_id BIGINT NOT NULL,
+                     PRIMARY KEY (reader_id, book_id),
+                     FOREIGN KEY (reader_id) REFERENCES member(id),
+                     FOREIGN KEY (book_id) REFERENCES book(id)
 );
