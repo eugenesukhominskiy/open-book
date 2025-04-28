@@ -3,6 +3,10 @@ package com.openbook.openbook.controllers;
 import com.openbook.openbook.DTO.AuthDTO;
 import com.openbook.openbook.DTO.MemberDTO;
 import com.openbook.openbook.services.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "Endpoints for user authentication and registration")
 public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final AuthService authService;
@@ -26,6 +31,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Login user", description = "Authenticates a user with username and password.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
     public ResponseEntity<?> login(@RequestBody AuthDTO authRequest) {
         try {
             var auth = new UsernamePasswordAuthenticationToken(
@@ -41,6 +51,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register user", description = "Registers a new user with provided information.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Registration failed")
+    })
     public ResponseEntity<?> register(@RequestBody MemberDTO memberDTO) {
         try {
             authService.register(memberDTO);
@@ -49,5 +64,4 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
 }
