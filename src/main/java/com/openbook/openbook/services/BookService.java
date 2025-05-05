@@ -9,7 +9,6 @@ import com.openbook.openbook.repository.BookRepository;
 import com.openbook.openbook.repository.GenreRepository;
 import com.openbook.openbook.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -52,9 +51,9 @@ public class BookService {
     public Book update(Long bookId, BookDTO bookDTO, String username) {
         Book book = bookRepository.findById(bookId).orElseThrow(() -> new NoSuchElementException("Book not found"));
 
-        if (!book.getAuthor().getUsername().equals(username)) {
-            throw new AccessDeniedException("You are not allowed to update this book.");
-        }
+//        if (!book.getAuthor().getUsername().equals(username)) {
+//            throw new AccessDeniedException("You are not allowed to update this book.");
+//        }
 
         Genre genre = genreRepository.findById(bookDTO.getGenreId()).orElseThrow(() -> new RuntimeException("Genre not found"));
 

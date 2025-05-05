@@ -3,7 +3,9 @@ package com.openbook.openbook.services;
 import com.openbook.openbook.DTO.MemberDTO;
 import com.openbook.openbook.models.Member;
 import com.openbook.openbook.repository.MemberRepository;
+import com.openbook.openbook.security.MemberDetails;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 

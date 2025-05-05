@@ -23,7 +23,9 @@ public class Member {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = true)
+    private String githubId;
+    @Column(unique = true, nullable = true)
     private String email;
     @Column(unique = true)
     private String username;

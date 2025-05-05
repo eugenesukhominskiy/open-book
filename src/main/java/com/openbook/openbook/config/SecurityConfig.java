@@ -1,12 +1,17 @@
 package com.openbook.openbook.config;
 
+import com.openbook.openbook.services.CustomOAuth2UserService;
 import com.openbook.openbook.services.MemberDetailService;
+import com.openbook.openbook.services.MemberService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -24,10 +29,12 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
     private final MemberDetailService memberDetailService;
+    private final CustomOAuth2UserService customOAuth2UserService;
 
     @Autowired
-    public SecurityConfig(MemberDetailService memberDetailService) {
+    public SecurityConfig(MemberDetailService memberDetailService, CustomOAuth2UserService customOAuth2UserService) {
         this.memberDetailService = memberDetailService;
+        this.customOAuth2UserService = customOAuth2UserService;
     }
 
     @Bean
@@ -37,9 +44,15 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/work/**").hasAnyRole("WRITER", "ADMIN")
-                        .requestMatchers("/api/auth/**", "/api/account/**").permitAll()
                         .requestMatchers("/api/library/**", "/api/books/**").authenticated()
+
+                        .requestMatchers("/api/auth/**", "/api/account/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .oauth2Login(
+                        oauth2 -> oauth2
+                                .userInfoEndpoint(userInfo -> userInfo
+                                        .userService(customOAuth2UserService))
                 )
                 .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
                 .logout(logout -> logout
@@ -49,8 +62,7 @@ public class SecurityConfig {
                             response.getWriter().write("Logged out successfully");
                         })
                 )
-                .httpBasic()
-                .and().build();
+                .build();
     }
 
     @Bean
