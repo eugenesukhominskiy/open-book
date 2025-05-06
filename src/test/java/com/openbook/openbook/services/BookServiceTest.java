@@ -186,12 +186,12 @@ public class BookServiceTest {
     void update_ShouldThrowAccessDeniedException_WhenAuthorIsIncorrect() {
         // given
         Long bookId = 1L;
-        String username = "anotherUser"; // Користувач, який не є автором
+        String username = "anotherUser";
         Book book = new Book();
         book.setId(bookId);
         Member author = new Member();
         author.setUsername("author1");
-        book.setAuthor(author); // Автор книги
+        book.setAuthor(author);
 
         BookDTO bookDTO = new BookDTO();
         bookDTO.setTitle("New Title");
@@ -202,7 +202,7 @@ public class BookServiceTest {
         AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> bookService.update(bookId, bookDTO, username));
         assertEquals("You are not allowed to update this book.", exception.getMessage());
 
-        verify(bookRepository, never()).save(any(Book.class)); // збереження не викликається
+        verify(bookRepository, never()).save(any(Book.class));
     }
 
     @Test
