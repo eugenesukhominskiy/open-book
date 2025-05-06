@@ -1,0 +1,37 @@
+services:
+  postgres-db:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_DB: book
+      POSTGRES_USER: book
+      POSTGRES_PASSWORD: open-book
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  open-book-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: open-book-app
+    depends_on:
+      - postgres-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/book
+      SPRING_DATASOURCE_USERNAME: book
+      SPRING_DATASOURCE_PASSWORD: open-book
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
