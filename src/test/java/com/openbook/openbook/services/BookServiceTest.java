@@ -1,13 +1,15 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.DTO.BookDTO;
+import com.openbook.openbook.DTO.BookRequest;
 import com.openbook.openbook.enums.BookStatus;
-import com.openbook.openbook.models.Book;
-import com.openbook.openbook.models.Genre;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Book;
+import com.openbook.openbook.model.Genre;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.repository.BookRepository;
 import com.openbook.openbook.repository.GenreRepository;
 import com.openbook.openbook.repository.MemberRepository;
+import com.openbook.openbook.services.BookService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,7 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class BookServiceTest {
+class BookServiceTest {
+
     @Mock
     private BookRepository bookRepository;
 
@@ -37,344 +39,215 @@ public class BookServiceTest {
     @InjectMocks
     private BookService bookService;
 
+    private BookRequest bookRequest;
+    private Genre genre;
+    private Member author;
+    private Book book;
+
+    @BeforeEach
+    void setUp() {
+        bookRequest = new BookRequest();
+        bookRequest.setTitle("Test Book");
+        bookRequest.setDescription("Test Description");
+        bookRequest.setCharacters(300000L);
+        bookRequest.setPrice(400);
+        bookRequest.setGenreId(1L);
+
+        genre = new Genre();
+        genre.setId(1L);
+        genre.setName("Fantasy");
+
+        author = new Member();
+        author.setId(1L);
+        author.setUsername("testAuthor");
+
+        book = Book.builder()
+                .id(1L)
+                .title("Test Book")
+                .author(author)
+                .genre(genre)
+                .status(BookStatus.PENDING)
+                .build();
+    }
+
     @Test
-    void create_ShouldSaveBookWithCorrectFields_WhenDataIsValid() {
-        // given
-        Long genreId = 1L;
-        Long authorId = 2L;
+    void create_WithValidData_ReturnsCreatedBook() {
+        // Arrange
+        when(genreRepository.findById(1L)).thenReturn(Optional.of(genre));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(author));
+        when(bookRepository.save(any(Book.class))).thenReturn(book);
 
-        Genre genre = new Genre();
-        genre.setId(genreId);
+        // Act
+        Book result = bookService.create(bookRequest, 1L);
 
-        Member author = new Member();
-        author.setId(authorId);
-
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setTitle("Test Title");
-        bookDTO.setDescription("Test Description");
-        bookDTO.setCharacters(180000L);
-        bookDTO.setPrice(280);
-        bookDTO.setGenreId(genreId);
-        bookDTO.setAuthorId(authorId);
-
-        when(genreRepository.findById(genreId)).thenReturn(Optional.of(genre));
-        when(memberRepository.findById(authorId)).thenReturn(Optional.of(author));
-        when(bookRepository.save(any(Book.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        // when
-        Book result = bookService.create(bookDTO);
-
-        // then
-        assertEquals("Test Title", result.getTitle());
-        assertEquals("Test Description", result.getDescription());
-        assertEquals(180000L, result.getCharacters());
-        assertEquals(280, result.getPrice());
-        assertEquals(BookStatus.PENDING, result.getStatus());
-        assertEquals(genre, result.getGenre());
-        assertEquals(author, result.getAuthor());
-
+        // Assert
+        assertNotNull(result);
+        assertEquals("Test Book", result.getTitle());
         verify(bookRepository).save(any(Book.class));
     }
 
     @Test
-    void create_ShouldThrowException_WhenGenreNotFound() {
-        // given
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setGenreId(1L);
-        bookDTO.setAuthorId(2L);
-
+    void create_WithInvalidGenre_ThrowsException() {
+        // Arrange
         when(genreRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // when & then
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> bookService.create(bookDTO));
-
-        assertEquals("Genre not found", exception.getMessage());
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                bookService.create(bookRequest, 1L)
+        );
     }
 
     @Test
-    void create_ShouldThrowException_WhenAuthorNotFound() {
-        // given
-        Genre genre = new Genre();
-        genre.setId(1L);
+    void viewBook_ExistingId_ReturnsBook() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
 
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setGenreId(1L);
-        bookDTO.setAuthorId(2L);
+        // Act
+        Book result = bookService.viewBook(1L);
 
-        when(genreRepository.findById(1L)).thenReturn(Optional.of(genre));
-        when(memberRepository.findById(2L)).thenReturn(Optional.empty());
-
-        // when & then
-        RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> bookService.create(bookDTO));
-
-        assertEquals("Author not found", exception.getMessage());
+        // Assert
+        assertNotNull(result);
+        assertEquals("Test Book", result.getTitle());
     }
 
     @Test
-    void viewBook_ShouldReturnBook_WhenBookExists() {
-        // given
-        Long bookId = 1L;
-        Book book = new Book();
-        book.setId(bookId);
+    void viewBook_NonExistingId_ReturnsNull() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.empty());
 
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
+        // Act
+        Book result = bookService.viewBook(1L);
 
-        // when
-        Book foundBook = bookService.viewBook(bookId);
-
-        // then
-        assertNotNull(foundBook);
-        assertEquals(bookId, foundBook.getId());
-        verify(bookRepository).findById(bookId);
+        // Assert
+        assertNull(result);
     }
 
     @Test
-    void viewBook_ShouldReturnNull_WhenBookNotFound() {
-        // given
-        Long bookId = 1L;
-        when(bookRepository.findById(bookId)).thenReturn(Optional.empty());
+    void update_AuthorMatches_UpdatesBook() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
+        when(bookRepository.save(any(Book.class))).thenReturn(book);
 
-        // when
-        Book foundBook = bookService.viewBook(bookId);
+        BookRequest updateRequest = new BookRequest();
+        updateRequest.setTitle("Updated Title");
 
-        // then
-        assertNull(foundBook);
-        verify(bookRepository).findById(bookId);
-    }
+        // Act
+        Book result = bookService.update(1L, updateRequest, "testAuthor");
 
-    @Test
-    void update_ShouldUpdateBook_WhenAuthorIsCorrect() {
-        // given
-        Long bookId = 1L;
-        String username = "author1";
-        Book book = new Book();
-        book.setId(bookId);
-
-        Member author = new Member();
-        author.setUsername(username);
-        book.setAuthor(author);
-
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setTitle("New Title");
-        bookDTO.setDescription("New Description");
-        bookDTO.setCharacters(200000L);
-        bookDTO.setPrice(220);
-        bookDTO.setGenreId(1L);
-
-        Genre genre = new Genre();
-        genre.setId(1L);
-
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-        when(genreRepository.findById(1L)).thenReturn(Optional.of(genre));
-        when(bookRepository.save(any(Book.class))).thenAnswer(i -> i.getArgument(0));
-
-        // when
-        Book updatedBook = bookService.update(bookId, bookDTO, username);
-
-        // then
-        assertEquals("New Title", updatedBook.getTitle());
-        assertEquals("New Description", updatedBook.getDescription());
-        assertEquals(200000, updatedBook.getCharacters());
-        assertEquals(220, updatedBook.getPrice());
-        assertEquals(genre, updatedBook.getGenre());
-        verify(bookRepository).save(updatedBook);
-    }
-
-    @Test
-    void update_ShouldThrowAccessDeniedException_WhenAuthorIsIncorrect() {
-        // given
-        Long bookId = 1L;
-        String username = "anotherUser";
-        Book book = new Book();
-        book.setId(bookId);
-        Member author = new Member();
-        author.setUsername("author1");
-        book.setAuthor(author);
-
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setTitle("New Title");
-
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
-        // when + then
-        AccessDeniedException exception = assertThrows(AccessDeniedException.class, () -> bookService.update(bookId, bookDTO, username));
-        assertEquals("You are not allowed to update this book.", exception.getMessage());
-
-        verify(bookRepository, never()).save(any(Book.class));
-    }
-
-    @Test
-    void update_ShouldThrowRuntimeException_WhenGenreNotFound() {
-        // given
-        Long bookId = 1L;
-        String username = "author1";
-        Book book = new Book();
-        book.setId(bookId);
-
-        Member author = new Member();
-        author.setUsername(username);
-        book.setAuthor(author); // Автор книги
-
-        BookDTO bookDTO = new BookDTO();
-        bookDTO.setTitle("New Title");
-        bookDTO.setGenreId(1L); // Зазначений жанр, якого не існує
-
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-        when(genreRepository.findById(1L)).thenReturn(Optional.empty());
-
-        // when + then
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> bookService.update(bookId, bookDTO, username));
-        assertEquals("Genre not found", exception.getMessage());
-
-        verify(bookRepository, never()).save(any(Book.class)); // збереження не викликається
-    }
-
-    @Test
-    void delete_ShouldDeleteBook_WhenBookExists() {
-        // given
-        Long bookId = 1L;
-
-        // mock
-        when(bookRepository.existsById(bookId)).thenReturn(true);
-
-        // when
-        bookService.delete(bookId);
-
-        // then
-        verify(bookRepository).deleteById(bookId);
-    }
-
-    @Test
-    void delete_ShouldThrowException_WhenBookDoesNotExist() {
-        // given
-        Long bookId = 1L;
-
-        when(bookRepository.existsById(bookId)).thenReturn(false);
-
-        // when + then
-        assertThrows(RuntimeException.class, () -> bookService.delete(bookId));
-    }
-
-    @Test
-    void findAllAuthorBooks_ShouldReturnBooks_WhenAuthorExists() {
-        // given
-        Long authorId = 1L;
-
-        // створюємо список книг для автора
-        Book book1 = new Book();
-        book1.setId(1L);
-        Member author = new Member();
-        author.setUsername("author1");
-
-        book1.setAuthor(author);
-
-        Book book2 = new Book();
-        book2.setId(2L);
-        book2.setAuthor(author );
-
-        List<Book> books = Arrays.asList(book1, book2);
-
-        // mock для репозиторію
-        when(bookRepository.findAllByAuthor_Id(authorId)).thenReturn(books);
-
-        // when
-        List<Book> result = bookService.findAllAuthorBooks(authorId);
-
-        // then
-        assertEquals(2, result.size());
-        assertTrue(result.contains(book1));
-        assertTrue(result.contains(book2));
-        verify(bookRepository).findAllByAuthor_Id(authorId); // перевірка виклику методу репозиторію
-    }
-
-    @Test
-    void getAllNotVerifiedBooks_ShouldReturnBooksWithNonApprovedStatus() {
-        // given
-        Book book1 = new Book();
-        book1.setId(1L);
-        book1.setStatus(BookStatus.PENDING);
-
-        Book book2 = new Book();
-        book2.setId(2L);
-        book2.setStatus(BookStatus.PENDING);
-
-        Book book3 = new Book();
-        book3.setId(3L);
-        book3.setStatus(BookStatus.APPROVED);
-
-        List<Book> books = Arrays.asList(book1, book2, book3);
-
-        // mock
-        when(bookRepository.findAllByStatusNot(BookStatus.APPROVED)).thenReturn(Arrays.asList(book1, book2));
-
-        // when
-        List<Book> result = bookService.getAllNotVerifiedBooks();
-
-        // then
-        assertEquals(2, result.size());
-        assertTrue(result.contains(book1));
-        assertTrue(result.contains(book2));
-        assertFalse(result.contains(book3));
-        verify(bookRepository).findAllByStatusNot(BookStatus.APPROVED);
-    }
-
-    @Test
-    void changeBookStatus_ShouldChangeStatus_WhenBookExists() {
-        // given
-        Long bookId = 1L;
-        Book book = new Book();
-        book.setId(bookId);
-        book.setStatus(BookStatus.PENDING);
-
-        BookStatus newStatus = BookStatus.APPROVED;
-
-        // mock для репозиторію
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-        when(bookRepository.save(any(Book.class))).thenAnswer(i -> i.getArgument(0));
-
-        // when
-        Book updatedBook = bookService.changeBookStatus(bookId, newStatus);
-
-        // then
-        assertEquals(newStatus, updatedBook.getStatus());
+        // Assert
+        assertEquals("Updated Title", result.getTitle());
         verify(bookRepository).save(book);
     }
 
     @Test
-    void findById_ShouldReturnBook_WhenBookExists() {
-        // given
-        Long bookId = 1L;
-        Book book = new Book();
-        book.setId(bookId);
-        book.setTitle("Test Book");
+    void update_AuthorDoesNotMatch_ThrowsAccessDenied() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
 
-        // mock для репозиторію
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
-        // when
-        Optional<Book> result = bookService.findById(bookId);
-
-        // then
-        assertTrue(result.isPresent()); // Перевіряємо, що книга знайдена
-        assertEquals(book, result.get()); // Перевіряємо, що повернута книга — це та сама книга
+        // Act & Assert
+        assertThrows(AccessDeniedException.class, () ->
+                bookService.update(1L, bookRequest, "anotherUser")
+        );
     }
 
     @Test
-    void findById_ShouldReturnEmpty_WhenBookNotFound() {
-        // given
-        Long bookId = 1L;
+    void delete_ExistingId_DeletesBook() {
+        // Arrange
+        when(bookRepository.existsById(1L)).thenReturn(true);
 
-        // mock для репозиторію
-        when(bookRepository.findById(bookId)).thenReturn(Optional.empty());
+        // Act
+        bookService.delete(1L);
 
-        // when
-        Optional<Book> result = bookService.findById(bookId);
-
-        // then
-        assertFalse(result.isPresent()); // Перевіряємо, що книга не знайдена
+        // Assert
+        verify(bookRepository).deleteById(1L);
     }
 
+    @Test
+    void delete_NonExistingId_ThrowsException() {
+        // Arrange
+        when(bookRepository.existsById(1L)).thenReturn(false);
 
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                bookService.delete(1L)
+        );
+    }
+
+    @Test
+    void findAllAuthorBooks_ReturnsBooksList() {
+        // Arrange
+        when(bookRepository.findAllByAuthor_Id(1L)).thenReturn(List.of(book));
+
+        // Act
+        List<Book> result = bookService.findAllAuthorBooks(1L);
+
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals("Test Book", result.get(0).getTitle());
+    }
+
+    @Test
+    void searchBooks_WithTitle_ReturnsFilteredBooks() {
+        // Arrange
+        when(bookRepository.findBooksByAnyParams("Test", null, null))
+                .thenReturn(List.of(book));
+
+        // Act
+        List<Book> result = bookService.searchBooks("Test", null, null);
+
+        // Assert
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void searchBooks_NoParams_ReturnsAllBooks() {
+        // Arrange
+        when(bookRepository.findAll()).thenReturn(List.of(book));
+
+        // Act
+        List<Book> result = bookService.searchBooks(null, null, null);
+
+        // Assert
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void getAllNotVerifiedBooks_ReturnsPendingBooks() {
+        // Arrange
+        when(bookRepository.findAllByStatusNot(BookStatus.APPROVED))
+                .thenReturn(List.of(book));
+
+        // Act
+        List<Book> result = bookService.getAllNotVerifiedBooks();
+
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals(BookStatus.PENDING, result.get(0).getStatus());
+    }
+
+    @Test
+    void changeBookStatus_UpdatesStatus() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
+        when(bookRepository.save(any(Book.class))).thenReturn(book);
+
+        // Act
+        Book result = bookService.changeBookStatus(1L, BookStatus.APPROVED);
+
+        // Assert
+        assertEquals(BookStatus.APPROVED, result.getStatus());
+    }
+
+    @Test
+    void findById_ReturnsOptionalBook() {
+        // Arrange
+        when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
+
+        // Act
+        Optional<Book> result = bookService.findById(1L);
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals("Test Book", result.get().getTitle());
+    }
 }

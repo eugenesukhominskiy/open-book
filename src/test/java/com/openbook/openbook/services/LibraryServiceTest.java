@@ -1,7 +1,7 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.models.Book;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Book;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.repository.BookRepository;
 import com.openbook.openbook.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,117 +31,129 @@ class LibraryServiceTest {
     @InjectMocks
     private LibraryService libraryService;
 
-    @Test
-    void add_ShouldAddBookToLibrary_WhenNotAlreadyPresent() {
-        Long memberId = 1L;
-        Long bookId = 2L;
+    private Member testMember;
+    private Book testBook;
+    private final Long memberId = 1L;
+    private final Long bookId = 1L;
 
-        Member member = new Member();
-        member.setId(memberId);
-        member.setLibrary(new ArrayList<>());
+    @BeforeEach
+    void setUp() {
+        testMember = new Member();
+        testMember.setId(memberId);
+        testMember.setLibrary(new ArrayList<>());
 
-        Book book = new Book();
-        book.setId(bookId);
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
-        libraryService.add(memberId, bookId);
-
-        assertTrue(member.getLibrary().contains(book));
-        verify(memberRepository).save(member);
+        testBook = new Book();
+        testBook.setId(bookId);
+        testBook.setTitle("Test Book");
     }
 
     @Test
-    void add_ShouldNotAddBook_WhenAlreadyPresent() {
-        Long memberId = 1L;
-        Long bookId = 2L;
+    void add_WhenBookNotInLibrary_AddsBook() {
+        // Arrange
+        when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(testMember));
+        when(memberRepository.save(any(Member.class))).thenReturn(testMember);
 
-        Book book = new Book();
-        book.setId(bookId);
-
-        Member member = new Member();
-        member.setId(memberId);
-        member.setLibrary(new ArrayList<>(List.of(book)));
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
+        // Act
         libraryService.add(memberId, bookId);
 
-        assertEquals(1, member.getLibrary().size());
+        // Assert
+        assertTrue(testMember.getLibrary().contains(testBook));
+        verify(memberRepository).save(testMember);
+    }
+
+    @Test
+    void add_WhenBookAlreadyInLibrary_DoesNotAddAgain() {
+        // Arrange
+        testMember.getLibrary().add(testBook);
+        when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(testMember));
+
+        // Act
+        libraryService.add(memberId, bookId);
+
+        // Assert
+        assertEquals(1, testMember.getLibrary().size());
         verify(memberRepository, never()).save(any());
     }
 
     @Test
-    void remove_ShouldRemoveBook_WhenPresent() {
-        Long memberId = 1L;
-        Long bookId = 2L;
+    void add_WhenBookNotFound_ThrowsException() {
+        // Arrange
+        when(bookRepository.findById(bookId)).thenReturn(Optional.empty());
 
-        Book book = new Book();
-        book.setId(bookId);
-
-        Member member = new Member();
-        member.setId(memberId);
-        member.setLibrary(new ArrayList<>(List.of(book)));
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
-        boolean removed = libraryService.remove(memberId, bookId);
-
-        assertTrue(removed);
-        assertFalse(member.getLibrary().contains(book));
-        verify(memberRepository).save(member);
-    }
-
-    @Test
-    void remove_ShouldReturnFalse_WhenBookNotInLibrary() {
-        Long memberId = 1L;
-        Long bookId = 2L;
-
-        Book book = new Book();
-        book.setId(bookId);
-
-        Member member = new Member();
-        member.setId(memberId);
-        member.setLibrary(new ArrayList<>()); // пусто
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(bookRepository.findById(bookId)).thenReturn(Optional.of(book));
-
-        boolean removed = libraryService.remove(memberId, bookId);
-
-        assertFalse(removed);
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                libraryService.add(memberId, bookId)
+        );
         verify(memberRepository, never()).save(any());
     }
 
     @Test
-    void getLibrary_ShouldReturnBooks_WhenMemberExists() {
-        Long memberId = 1L;
-
-        Book book1 = new Book(); book1.setId(1L);
-        Book book2 = new Book(); book2.setId(2L);
-
-        Member member = new Member();
-        member.setId(memberId);
-        member.setLibrary(List.of(book1, book2));
-
-        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
-
-        List<Book> library = libraryService.getLibrary(memberId);
-
-        assertEquals(2, library.size());
-        assertTrue(library.contains(book1));
-        assertTrue(library.contains(book2));
-    }
-
-    @Test
-    void getLibrary_ShouldThrow_WhenMemberNotFound() {
-        Long memberId = 1L;
-
+    void add_WhenMemberNotFound_ThrowsException() {
+        // Arrange
+        when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook));
         when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> libraryService.getLibrary(memberId));
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                libraryService.add(memberId, bookId)
+        );
+    }
+
+    @Test
+    void remove_WhenBookInLibrary_RemovesBook() {
+        // Arrange
+        testMember.getLibrary().add(testBook);
+        when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(testMember));
+        when(memberRepository.save(any(Member.class))).thenReturn(testMember);
+
+        // Act
+        boolean result = libraryService.remove(memberId, bookId);
+
+        // Assert
+        assertTrue(result);
+        assertFalse(testMember.getLibrary().contains(testBook));
+        verify(memberRepository).save(testMember);
+    }
+
+    @Test
+    void remove_WhenBookNotInLibrary_ReturnsFalse() {
+        // Arrange
+        when(bookRepository.findById(bookId)).thenReturn(Optional.of(testBook));
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(testMember));
+
+        // Act
+        boolean result = libraryService.remove(memberId, bookId);
+
+        // Assert
+        assertFalse(result);
+        verify(memberRepository, never()).save(any());
+    }
+
+    @Test
+    void getLibrary_ReturnsMemberLibrary() {
+        // Arrange
+        testMember.getLibrary().add(testBook);
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(testMember));
+
+        // Act
+        List<Book> result = libraryService.getLibrary(memberId);
+
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals("Test Book", result.get(0).getTitle());
+    }
+
+    @Test
+    void getLibrary_WhenMemberNotFound_ThrowsException() {
+        // Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                libraryService.getLibrary(memberId)
+        );
     }
 }

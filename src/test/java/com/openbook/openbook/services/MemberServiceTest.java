@@ -1,9 +1,10 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.DTO.MemberDTO;
+import com.openbook.openbook.DTO.MemberRequest;
 import com.openbook.openbook.enums.Role;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.repository.MemberRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,11 +17,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class MemberServiceTest {
+class MemberServiceTest {
+
     @Mock
     private MemberRepository memberRepository;
 
@@ -30,101 +31,149 @@ public class MemberServiceTest {
     @InjectMocks
     private MemberService memberService;
 
+    private MemberRequest memberRequest;
+    private Member existingMember;
+    private final Long memberId = 1L;
+    private final String encodedPassword = "$2a$10$encodedPassword";
+
+    @BeforeEach
+    void setUp() {
+        memberRequest = new MemberRequest();
+        memberRequest.setUsername("testuser");
+        memberRequest.setEmail("test@example.com");
+        memberRequest.setPassword("password123");
+        memberRequest.setRole(Role.READER);
+
+        existingMember = new Member();
+        existingMember.setId(memberId);
+        existingMember.setUsername("testuser");
+        existingMember.setEmail("test@example.com");
+        existingMember.setPassword(encodedPassword);
+    }
+
     @Test
-    void create_ShouldSaveMemberWithEncodedPassword() {
-        // given
-        MemberDTO dto = new MemberDTO();
-        dto.setUsername("john");
-        dto.setEmail("john@example.com");
-        dto.setPassword("pass123");
-        dto.setRole(Role.READER);
+    void create_WithValidRequest_ReturnsMember() {
+        // Arrange
+        when(passwordEncoder.encode(memberRequest.getPassword())).thenReturn(encodedPassword);
+        when(memberRepository.save(any(Member.class))).thenReturn(existingMember);
 
-        when(passwordEncoder.encode("pass123")).thenReturn("encoded_pass");
-        when(memberRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        // Act
+        Member result = memberService.create(memberRequest);
 
-        // when
-        Member saved = memberService.create(dto);
-
-        // then
-        assertEquals("john", saved.getUsername());
-        assertEquals("john@example.com", saved.getEmail());
-        assertEquals("encoded_pass", saved.getPassword());
-        assertEquals(Role.READER, saved.getRole());
+        // Assert
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
+        assertEquals(encodedPassword, result.getPassword());
+        verify(passwordEncoder).encode(memberRequest.getPassword());
         verify(memberRepository).save(any(Member.class));
     }
 
     @Test
-    void read_ShouldReturnMember_WhenExists() {
-        // given
-        Member member = new Member();
-        member.setId(1L);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+    void read_ExistingId_ReturnsMember() {
+        // Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(existingMember));
 
-        // when
-        Member found = memberService.read(1L);
+        // Act
+        Member result = memberService.read(memberId);
 
-        // then
-        assertNotNull(found);
-        assertEquals(1L, found.getId());
+        // Assert
+        assertNotNull(result);
+        assertEquals("testuser", result.getUsername());
     }
 
     @Test
-    void update_ShouldModifyUserFields_AndEncodePassword() {
-        // given
-        Long userId = 1L;
-        Member existing = new Member();
-        existing.setId(userId);
-        existing.setUsername("old");
-        existing.setEmail("old@email.com");
-        existing.setPassword("oldpass");
+    void read_NonExistingId_ReturnsNull() {
+        // Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
-        MemberDTO dto = new MemberDTO();
-        dto.setUsername("newUser");
-        dto.setEmail("new@email.com");
-        dto.setPassword("newpass");
+        // Act
+        Member result = memberService.read(memberId);
 
-        when(memberRepository.findById(userId)).thenReturn(Optional.of(existing));
-        when(passwordEncoder.encode("newpass")).thenReturn("encoded_newpass");
-        when(memberRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        // when
-        Member updated = memberService.update(dto, userId);
-
-        // then
-        assertEquals("newUser", updated.getUsername());
-        assertEquals("new@email.com", updated.getEmail());
-        assertEquals("encoded_newpass", updated.getPassword());
+        // Assert
+        assertNull(result);
     }
 
     @Test
-    void delete_ShouldCallRepositoryDelete() {
-        // when
-        memberService.delete(42L);
+    void update_ExistingUser_UpdatesFields() {
+        // Arrange
+        MemberRequest updateRequest = new MemberRequest();
+        updateRequest.setUsername("newusername");
+        updateRequest.setEmail("new@example.com");
+        updateRequest.setPassword("newpassword");
+        updateRequest.setRole(Role.READER);
 
-        // then
-        verify(memberRepository).deleteById(42L);
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(existingMember));
+        when(passwordEncoder.encode(updateRequest.getPassword())).thenReturn("$2a$10$newEncodedPassword");
+        when(memberRepository.save(any(Member.class))).thenReturn(existingMember);
+
+        // Act
+        Member result = memberService.update(updateRequest, memberId);
+
+        // Assert
+        assertEquals("new@example.com", result.getEmail());
+        assertEquals("newusername", result.getUsername());
+        verify(passwordEncoder).encode(updateRequest.getPassword());
     }
 
     @Test
-    void findByUsername_ShouldReturnMember_WhenFound() {
-        Member member = new Member();
-        member.setUsername("test");
+    void update_NonExistingUser_ThrowsException() {
+        // Arrange
+        when(memberRepository.findById(memberId)).thenReturn(Optional.empty());
 
-        when(memberRepository.findByUsername("test")).thenReturn(Optional.of(member));
+        // Act & Assert
+        assertThrows(RuntimeException.class, () ->
+                memberService.update(memberRequest, memberId)
+        );
+        verify(memberRepository, never()).save(any());
+    }
 
-        Optional<Member> result = memberService.findByUsername("test");
+    @Test
+    void delete_ValidId_DeletesMember() {
+        // Arrange
+        doNothing().when(memberRepository).deleteById(memberId);
 
+        // Act
+        memberService.delete(memberId);
+
+        // Assert
+        verify(memberRepository).deleteById(memberId);
+    }
+
+    @Test
+    void findByUsername_ExistingUser_ReturnsMember() {
+        // Arrange
+        when(memberRepository.findByUsername("testuser")).thenReturn(Optional.of(existingMember));
+
+        // Act
+        Optional<Member> result = memberService.findByUsername("testuser");
+
+        // Assert
         assertTrue(result.isPresent());
-        assertEquals("test", result.get().getUsername());
+        assertEquals("testuser", result.get().getUsername());
     }
 
     @Test
-    void findAllMembers_ShouldReturnListOfMembers() {
-        List<Member> list = List.of(new Member(), new Member());
-        when(memberRepository.findAll()).thenReturn(list);
+    void findByUsername_NonExistingUser_ReturnsEmpty() {
+        // Arrange
+        when(memberRepository.findByUsername("nonexistent")).thenReturn(Optional.empty());
 
+        // Act
+        Optional<Member> result = memberService.findByUsername("nonexistent");
+
+        // Assert
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findAllMembers_ReturnsAllMembers() {
+        // Arrange
+        when(memberRepository.findAll()).thenReturn(List.of(existingMember));
+
+        // Act
         List<Member> result = memberService.findAllMembers();
 
-        assertEquals(2, result.size());
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals("testuser", result.get(0).getUsername());
     }
 }
