@@ -1,6 +1,5 @@
 package com.openbook.openbook.DTO;
 
-import com.openbook.openbook.enums.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,13 +8,9 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MemberDTO {
-    @Schema(example = "READER")
-    private Role role;
-    @Schema(example = "user@email.com")
-    private String email;
-    @Schema(example = "new_user")
+public class LoginRequest {
+    @Schema(example = "user_openbook")
     private String username;
-    @Schema(example = "user_password")
+    @Schema(example = "secret_password")
     private String password;
 }

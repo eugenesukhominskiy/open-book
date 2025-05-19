@@ -23,4 +23,3 @@ public class BookRequest {
     @Schema(example = "3")
     private Long genreId;
 }
-
