@@ -1,7 +1,7 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.models.Book;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Book;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.repository.BookRepository;
 import com.openbook.openbook.repository.MemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;

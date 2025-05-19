@@ -1,11 +1,9 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.DTO.MemberDTO;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.DTO.MemberRequest;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.repository.MemberRepository;
-import com.openbook.openbook.security.MemberDetails;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +21,12 @@ public class MemberService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public Member create(MemberDTO memberDTO) {
+    public Member create(MemberRequest request) {
         Member member = Member.builder()
-                .role(memberDTO.getRole())
-                .email(memberDTO.getEmail())
-                .username(memberDTO.getUsername())
-                .password(passwordEncoder.encode(memberDTO.getPassword()))
+                .role(request.getRole())
+                .email(request.getEmail())
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .build();
         return memberRepository.save(member);
     }
@@ -37,13 +35,14 @@ public class MemberService {
         return memberRepository.findById(id).orElse(null);
     }
 
-    public Member update(MemberDTO dto, Long userId) {
+    public Member update(MemberRequest request, Long userId) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        member.setEmail(dto.getEmail());
-        member.setUsername(dto.getUsername());
-        member.setPassword(passwordEncoder.encode(dto.getPassword())); // если шифруешь
+        member.setEmail(request.getEmail());
+        member.setUsername(request.getUsername());
+        member.setPassword(passwordEncoder.encode(request.getPassword()));
+
         return memberRepository.save(member);
     }
 
