@@ -1,6 +1,5 @@
 package com.openbook.openbook.services;
 
-import com.openbook.openbook.models.Member;
 import com.openbook.openbook.repository.MemberRepository;
 import com.openbook.openbook.security.MemberDetails;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,8 +7,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 public class MemberDetailService implements UserDetailsService {
@@ -22,12 +19,9 @@ public class MemberDetailService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<Member> member = memberRepository.findByUsername(username);
-
-        if (member.isEmpty()) {
-            throw new UsernameNotFoundException("User not found");
-        }
-
-        return new MemberDetails(member.get());
+        System.out.println("Username: " + username);
+        return memberRepository.findByUsername(username) // Ищем по username
+                .map(MemberDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 }

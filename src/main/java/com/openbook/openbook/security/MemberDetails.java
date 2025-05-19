@@ -1,6 +1,6 @@
 package com.openbook.openbook.security;
 
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Member;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

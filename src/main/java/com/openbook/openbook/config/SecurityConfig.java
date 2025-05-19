@@ -1,40 +1,42 @@
 package com.openbook.openbook.config;
 
-import com.openbook.openbook.services.CustomOAuth2UserService;
+import com.openbook.openbook.services.OAuth2SuccessHandler;
 import com.openbook.openbook.services.MemberDetailService;
-import com.openbook.openbook.services.MemberService;
+import com.openbook.openbook.util.JwtAuthFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.util.List;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-    private final MemberDetailService memberDetailService;
-    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler handler;
+    private final JwtAuthFilter filter;
 
     @Autowired
-    public SecurityConfig(MemberDetailService memberDetailService, CustomOAuth2UserService customOAuth2UserService) {
-        this.memberDetailService = memberDetailService;
-        this.customOAuth2UserService = customOAuth2UserService;
+    public SecurityConfig(OAuth2SuccessHandler handler, JwtAuthFilter filter) {
+        this.handler = handler;
+        this.filter = filter;
     }
 
     @Bean
@@ -44,37 +46,28 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/work/**").hasAnyRole("WRITER", "ADMIN")
-                        .requestMatchers("/api/library/**", "/api/books/**").authenticated()
-
-                        .requestMatchers("/api/auth/**", "/api/account/**").permitAll()
+                        .requestMatchers("/api/library/**", "/api/books/**", "/api/account/**").authenticated()
+                        .requestMatchers("/api/auth/**", "/oauth2/**", "/swagger-ui/**",  "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2Login(
-                        oauth2 -> oauth2
-                                .userInfoEndpoint(userInfo -> userInfo
-                                        .userService(customOAuth2UserService))
+                .oauth2Login(oauth -> oauth
+                        .successHandler(handler)
                 )
-                .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessHandler((request, response, authentication) -> {
-                            response.setStatus(200);
-                            response.getWriter().write("Logged out successfully");
-                        })
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
+                .formLogin(withDefaults())
                 .build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(memberDetailService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return new ProviderManager(List.of(authProvider));
+    public AuthenticationManager authManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
+    public PasswordEncoder encoder() {
         return new BCryptPasswordEncoder();
     }
 }
