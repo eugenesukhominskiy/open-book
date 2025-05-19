@@ -1,6 +1,7 @@
 package com.openbook.openbook.controllers;
 
-import com.openbook.openbook.models.Book;
+import com.openbook.openbook.DTO.BookResponse;
+import com.openbook.openbook.model.Book;
 import com.openbook.openbook.services.BookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,14 +32,18 @@ public class BookController {
             @ApiResponse(responseCode = "200", description = "Books found"),
             @ApiResponse(responseCode = "400", description = "Invalid search parameters")
     })
-    private ResponseEntity<?> searchBooks(
+    public ResponseEntity<?> searchBooks(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String author,
             @RequestParam(required = false) String genre
     ) {
         List<Book> books = bookService.searchBooks(title, author, genre);
-        return ResponseEntity.ok(books);
-        // TODO: Fix a endpoint
+
+        List<BookResponse> response = books.stream()
+                .map(BookResponse::new)
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{bookId}")
@@ -47,11 +52,12 @@ public class BookController {
             @ApiResponse(responseCode = "200", description = "Book found"),
             @ApiResponse(responseCode = "404", description = "Book not found")
     })
-    private ResponseEntity<?> getBookProfile(@PathVariable Long bookId) {
+    public ResponseEntity<?> getBookProfile(@PathVariable Long bookId) {
         Optional<Book> book = bookService.findById(bookId);
 
         if (book.isPresent()) {
-            return ResponseEntity.ok(book.get());
+            BookResponse response = new BookResponse(book.get());
+            return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Book not found");
         }

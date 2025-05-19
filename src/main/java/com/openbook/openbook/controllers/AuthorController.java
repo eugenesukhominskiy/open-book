@@ -1,8 +1,9 @@
 package com.openbook.openbook.controllers;
 
-import com.openbook.openbook.DTO.BookDTO;
-import com.openbook.openbook.models.Book;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.DTO.BookRequest;
+import com.openbook.openbook.DTO.BookResponse;
+import com.openbook.openbook.model.Book;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.services.BookService;
 import com.openbook.openbook.services.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,10 +38,17 @@ public class AuthorController {
             @ApiResponse(responseCode = "200", description = "Book successfully created"),
             @ApiResponse(responseCode = "400", description = "Invalid book data provided")
     })
-    private ResponseEntity<?> createNewBook(@RequestBody BookDTO bookDTO) {
+    public ResponseEntity<?> createNewBook(Principal principal, @RequestBody BookRequest request) {
+        Optional<Member> author = memberService.findByUsername(principal.getName());
+
+        if (author.isEmpty()) {
+            return ResponseEntity.status(404).body("Member is not found");
+        }
+
         try {
-            Book newBook = bookService.create(bookDTO);
-            return ResponseEntity.ok(newBook);
+            Book newBook = bookService.create(request, author.get().getId());
+            BookResponse response = new BookResponse(newBook);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Book not created: " + e.getMessage());
         }
@@ -52,7 +60,7 @@ public class AuthorController {
             @ApiResponse(responseCode = "200", description = "List of author's books"),
             @ApiResponse(responseCode = "404", description = "Author not found")
     })
-    private ResponseEntity<?> viewOwnWorks(Principal principal) {
+    public ResponseEntity<?> viewOwnWorks(Principal principal) {
         Optional<Member> author = memberService.findByUsername(principal.getName());
 
         if (author.isEmpty()) {
@@ -61,7 +69,11 @@ public class AuthorController {
 
         List<Book> works = bookService.findAllAuthorBooks(author.get().getId());
 
-        return ResponseEntity.ok(works);
+        List<BookResponse> list = works.stream()
+                .map(BookResponse::new)
+                .toList();
+
+        return ResponseEntity.ok(list);
     }
 
     @PatchMapping("/{workId}")
@@ -71,12 +83,13 @@ public class AuthorController {
             @ApiResponse(responseCode = "403", description = "Access denied - user is not the author of the book"),
             @ApiResponse(responseCode = "404", description = "Book not found")
     })
-    private ResponseEntity<?> editBook(@PathVariable Long workId, @RequestBody BookDTO bookDTO, Principal principal) {
+    public ResponseEntity<?> editBook(@PathVariable Long workId, @RequestBody BookRequest request, Principal principal) {
         String username = principal.getName();
 
         try {
-            Book book = bookService.update(workId, bookDTO, username);
-            return ResponseEntity.ok(book);
+            Book book = bookService.update(workId, request, username);
+            BookResponse response = new BookResponse(book);
+            return ResponseEntity.ok(response);
         } catch (AccessDeniedException e) {
             return ResponseEntity.status(403).body("You are not allowed to edit this book.");
         } catch (NoSuchElementException e) {
@@ -90,7 +103,7 @@ public class AuthorController {
             @ApiResponse(responseCode = "200", description = "List of books and their statuses"),
             @ApiResponse(responseCode = "404", description = "Author not found")
     })
-    private ResponseEntity<?> getStatusOfBooks(Principal principal){
+    public ResponseEntity<?> getStatusOfBooks(Principal principal){
         String username = principal.getName();
         Optional<Member> author = memberService.findByUsername(username);
 

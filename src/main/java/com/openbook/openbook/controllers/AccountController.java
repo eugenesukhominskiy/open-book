@@ -1,14 +1,14 @@
 package com.openbook.openbook.controllers;
 
-import com.openbook.openbook.DTO.MemberDTO;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.DTO.MemberRequest;
+import com.openbook.openbook.DTO.MemberResponse;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.services.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,14 +32,15 @@ public class AccountController {
             @ApiResponse(responseCode = "200", description = "Profile retrieved successfully"),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
-    private ResponseEntity<?> viewProfile(Principal principal) {
+    public ResponseEntity<?> viewProfile(Principal principal) {
         String username = principal.getName();
-        Optional<Member> member = memberService.findByUsername(username);
+        Optional<Member> optionalMember = memberService.findByUsername(username);
 
-        if (member.isPresent()) {
-            return ResponseEntity.ok(member.get());
+        if (optionalMember.isPresent()) {
+            Member member = optionalMember.get();
+            return ResponseEntity.ok(new MemberResponse(member));
         } else {
-            return ResponseEntity.status(404).body("User don`t found");
+            return ResponseEntity.status(404).body("User not found");
         }
     }
 
@@ -49,7 +50,7 @@ public class AccountController {
             @ApiResponse(responseCode = "200", description = "Profile updated successfully"),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
-    private ResponseEntity<?> updateAccount(Principal principal, @RequestBody MemberDTO memberDTO) {
+    public ResponseEntity<?> updateAccount(Principal principal, @RequestBody MemberRequest memberRequest) {
         String username = principal.getName();
         Optional<Member> member = memberService.findByUsername(username);
 
@@ -57,10 +58,10 @@ public class AccountController {
             return ResponseEntity.status(404).body("User not found");
         }
 
-        Member currentMember = member.get();
-        Member updatedMember = memberService.update(memberDTO, currentMember.getId());
+        Member updatedMember = memberService.update(memberRequest, member.get().getId());
+        MemberResponse response = new MemberResponse(updatedMember);
 
-        return ResponseEntity.ok(updatedMember);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/delete")
@@ -69,7 +70,7 @@ public class AccountController {
             @ApiResponse(responseCode = "200", description = "Account deleted successfully"),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
-    private ResponseEntity<?> deleteAccount(Principal principal) {
+    public ResponseEntity<?> deleteAccount(Principal principal) {
         String username = principal.getName();
         Optional<Member> member = memberService.findByUsername(username);
 

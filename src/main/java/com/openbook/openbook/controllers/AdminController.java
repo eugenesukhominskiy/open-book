@@ -1,7 +1,10 @@
 package com.openbook.openbook.controllers;
 
+import com.openbook.openbook.DTO.BookResponse;
+import com.openbook.openbook.DTO.MemberResponse;
 import com.openbook.openbook.enums.BookStatus;
-import com.openbook.openbook.models.Member;
+import com.openbook.openbook.model.Book;
+import com.openbook.openbook.model.Member;
 import com.openbook.openbook.services.BookService;
 import com.openbook.openbook.services.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/admin/")
@@ -32,10 +36,13 @@ public class AdminController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Users retrieved successfully")
     })
-    private ResponseEntity<?> viewAllUsers() {
+    public ResponseEntity<?> viewAllUsers() {
         List<Member> allMember = memberService.findAllMembers();
-        // TODO: Fix json output
-        return ResponseEntity.ok(allMember);
+        List<MemberResponse> responses = allMember.stream()
+                .map(MemberResponse::new)
+                .toList();
+
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/books/pending")
@@ -43,8 +50,17 @@ public class AdminController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Pending books retrieved successfully")
     })
-    private ResponseEntity<?> viewAllModerationBook() {
-        return ResponseEntity.ok(bookService.getAllNotVerifiedBooks());
+    public ResponseEntity<?> viewAllModerationBook() {
+        List<Book> books = bookService.getAllNotVerifiedBooks();
+        List<BookResponse> responses = books.stream()
+                .map(BookResponse::new)
+                .toList();
+
+        if (books.isEmpty()) {
+            return ResponseEntity.status(404).body("No books found for moderation.");
+        }
+
+        return ResponseEntity.ok(responses);
     }
 
     @PatchMapping("/books/{id}/approve")
@@ -53,8 +69,14 @@ public class AdminController {
             @ApiResponse(responseCode = "200", description = "Book approved successfully"),
             @ApiResponse(responseCode = "404", description = "Book not found")
     })
-    private ResponseEntity<?> approvingBook(@PathVariable Long id) {
-        return ResponseEntity.ok(bookService.changeBookStatus(id, BookStatus.APPROVED));
+    public ResponseEntity<?> approvingBook(@PathVariable Long id) {
+        try {
+            Book updated = bookService.changeBookStatus(id, BookStatus.APPROVED);
+            BookResponse response = new BookResponse(updated);
+            return ResponseEntity.ok(response);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body("Book not found with ID: " + id);
+        }
     }
 
     @PatchMapping("/books/{id}/reject")
@@ -63,7 +85,13 @@ public class AdminController {
             @ApiResponse(responseCode = "200", description = "Book rejected successfully"),
             @ApiResponse(responseCode = "404", description = "Book not found")
     })
-    private ResponseEntity<?> rejectingBook(@PathVariable Long id) {
-        return ResponseEntity.ok(bookService.changeBookStatus(id, BookStatus.REJECTED));
+    public ResponseEntity<?> rejectingBook(@PathVariable Long id) {
+        try {
+            Book updated = bookService.changeBookStatus(id, BookStatus.REJECTED);
+            BookResponse response = new BookResponse(updated);
+            return ResponseEntity.ok(response);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).body("Book not found with ID: " + id);
+        }
     }
 }
