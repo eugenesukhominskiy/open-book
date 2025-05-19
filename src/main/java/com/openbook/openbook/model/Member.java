@@ -1,4 +1,4 @@
-package com.openbook.openbook.models;
+package com.openbook.openbook.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.openbook.openbook.enums.Role;
@@ -22,9 +22,6 @@ public class Member {
 
     @Enumerated(EnumType.STRING)
     private Role role;
-
-    @Column(unique = true, nullable = true)
-    private String githubId;
     @Column(unique = true, nullable = true)
     private String email;
     @Column(unique = true)
@@ -42,4 +39,15 @@ public class Member {
             inverseJoinColumns = @JoinColumn(name = "book_id")
     )
     private List<Book> library;
+
+    @Override
+    public String toString() {
+        return "Member{" +
+                "id=" + id +
+                ", role=" + role +
+                ", username='" + username + '\'' +
+                ", email='" + email + '\'' +
+                ", password='" + password + '\'' +
+                '}';
+    }
 }

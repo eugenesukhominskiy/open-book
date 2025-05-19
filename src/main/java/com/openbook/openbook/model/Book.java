@@ -1,4 +1,4 @@
-package com.openbook.openbook.models;
+package com.openbook.openbook.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.openbook.openbook.enums.BookStatus;

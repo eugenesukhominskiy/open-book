@@ -1,4 +1,4 @@
-package com.openbook.openbook.models;
+package com.openbook.openbook.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
